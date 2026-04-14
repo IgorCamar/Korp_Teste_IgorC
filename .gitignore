@@ -1,0 +1,25 @@
+# Segredos — nunca versionar
+.env
+*.env.local
+**/secrets.json
+**/appsettings.Production.json
+
+# .NET
+**/bin/
+**/obj/
+**/.vs/
+**/user-secrets/
+
+# Node / Angular
+**/node_modules/
+**/dist/
+**/.angular/
+
+# Outros
+*.user
+.DS_Store
+Thumbs.db
+
+# Arquivos locais do projeto
+apresentacao.html
+setup_git.sh

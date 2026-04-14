@@ -1,0 +1,118 @@
+version: '3.8'
+
+# Carrega variáveis do arquivo .env na raiz da solution
+# Copie .env.example para .env e preencha antes de rodar
+
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD:  ${SQLSERVER_SA_PASSWORD}
+      ACCEPT_EULA:  "Y"
+      MSSQL_PID:    "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - microservices-net
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SQLSERVER_SA_PASSWORD}", "-Q", "SELECT 1", "-C"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - microservices-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  estoque-api:
+    build:
+      context: ../Estoque.API
+      dockerfile: Dockerfile
+    container_name: estoque-api
+    env_file:
+      - ../.env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=${ESTOQUE_CONNECTION_STRING}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASS}
+      - AI__GeminiApiKey=${GEMINI_API_KEY}
+      - AI__GeminiModel=${GEMINI_MODEL}
+    ports:
+      - "5001:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - microservices-net
+    restart: on-failure
+
+  faturamento-api:
+    build:
+      context: ../Faturamento.API
+      dockerfile: Dockerfile
+    container_name: faturamento-api
+    env_file:
+      - ../.env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=${FATURAMENTO_CONNECTION_STRING}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASS}
+      - Services__EstoqueUrl=http://estoque-api:8080
+    ports:
+      - "5002:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - microservices-net
+    restart: on-failure
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: korp-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - estoque-api
+      - faturamento-api
+    networks:
+      - microservices-net
+    restart: on-failure
+
+volumes:
+  sqlserver_data:
+
+networks:
+  microservices-net:
+    driver: bridge

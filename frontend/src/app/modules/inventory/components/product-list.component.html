@@ -1,0 +1,244 @@
+<!-- Confirm Dialog -->
+<app-confirm-dialog
+  *ngIf="confirmDialog.visible"
+  [title]="confirmDialog.title"
+  [message]="confirmDialog.message"
+  [detail]="confirmDialog.detail"
+  [type]="confirmDialog.type"
+  [confirmLabel]="confirmDialog.confirmLabel"
+  (confirmed)="onConfirmDialogConfirm()"
+  (cancelled)="onConfirmDialogCancel()">
+</app-confirm-dialog>
+
+<!-- Toast -->
+<div class="toast-container">
+  <div *ngIf="toast" class="toast" [ngClass]="toast.type" (click)="dismissToast()">
+    <div class="toast-dot"></div>
+    <div>
+      <div class="toast-title">{{ toast.title }}</div>
+      <div class="toast-msg">{{ toast.message }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal backdrop -->
+<div *ngIf="modalMode !== 'none'" class="modal-backdrop" (click)="fecharModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+
+    <!-- Modal: Criar produto -->
+    <ng-container *ngIf="modalMode === 'criar'">
+      <div class="modal-header">
+        <div class="modal-title">Cadastrar Produto</div>
+        <button class="modal-close" (click)="fecharModal()">
+          <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+        </button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <div class="field-group" style="margin-bottom:12px">
+            <label class="field-label">Código</label>
+            <input class="field-input" formControlName="codigo" type="text" placeholder="Ex: MAT-001" />
+          </div>
+          <div class="field-group" style="margin-bottom:12px">
+            <label class="field-label">Descrição</label>
+            <input class="field-input" formControlName="descricao" type="text" placeholder="Descrição do produto" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Saldo Inicial</label>
+            <input class="field-input" formControlName="saldoInicial" type="number" step="0.01" min="0" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" (click)="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSaving">
+            <span *ngIf="isSaving" class="spinner-ring"></span>
+            {{ isSaving ? 'Salvando...' : 'Salvar Produto' }}
+          </button>
+        </div>
+      </form>
+    </ng-container>
+
+    <!-- Modal: Editar produto -->
+    <ng-container *ngIf="modalMode === 'editar'">
+      <div class="modal-header">
+        <div class="modal-title">Editar Produto — <span class="col-mono">{{ selectedProduto?.codigo }}</span></div>
+        <button class="modal-close" (click)="fecharModal()">
+          <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+        </button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <div class="field-group">
+            <label class="field-label">Descrição</label>
+            <input class="field-input" formControlName="descricao" type="text" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" (click)="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSaving">
+            <span *ngIf="isSaving" class="spinner-ring"></span>
+            {{ isSaving ? 'Salvando...' : 'Salvar Alteração' }}
+          </button>
+        </div>
+      </form>
+    </ng-container>
+
+    <!-- Modal: Incrementar saldo -->
+    <ng-container *ngIf="modalMode === 'incrementar'">
+      <div class="modal-header">
+        <div class="modal-title">Incrementar Saldo — <span class="col-mono">{{ selectedProduto?.codigo }}</span></div>
+        <button class="modal-close" (click)="fecharModal()">
+          <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+        </button>
+      </div>
+      <form [formGroup]="incrementForm" (ngSubmit)="onIncrementar()">
+        <div class="modal-body">
+          <div style="background:var(--surface-2);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--text-secondary)">
+            Saldo atual: <strong style="font-family:var(--mono);color:var(--text-primary)">{{ selectedProduto?.saldo | number:'1.0-2' }}</strong>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Quantidade a Adicionar</label>
+            <input class="field-input" formControlName="quantidade" type="number" step="0.01" min="0.01" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" (click)="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="incrementForm.invalid || isSaving">
+            <span *ngIf="isSaving" class="spinner-ring"></span>
+            {{ isSaving ? 'Salvando...' : 'Confirmar Incremento' }}
+          </button>
+        </div>
+      </form>
+    </ng-container>
+
+  </div>
+</div>
+
+<!-- Topbar -->
+<div class="topbar">
+  <span class="topbar-breadcrumb">Operações</span>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-title">Estoque de Produtos</span>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" (click)="carregar()">
+      <svg viewBox="0 0 12 12"><path d="M10.5 6A4.5 4.5 0 112.3 3.3M1.5 1.5v3h3"/></svg>
+      Atualizar
+    </button>
+    <button class="btn btn-primary" (click)="abrirCriar()">
+      <svg viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"/></svg>
+      Novo Produto
+    </button>
+  </div>
+</div>
+
+<app-ai-insights></app-ai-insights>
+
+<div class="content">
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Total de Produtos</div>
+      <div class="kpi-value">{{ totalProdutos }}</div>
+      <div class="kpi-delta kpi-neutral">itens cadastrados</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Saldo Total</div>
+      <div class="kpi-value">{{ saldoTotal | number:'1.0-0' }}</div>
+      <div class="kpi-delta kpi-neutral">unidades</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Baixo Estoque</div>
+      <div class="kpi-value">{{ totalBaixo }}</div>
+      <div class="kpi-delta" [ngClass]="totalBaixo > 0 ? 'kpi-down' : 'kpi-neutral'">
+        <svg *ngIf="totalBaixo > 0" viewBox="0 0 11 11"><path d="M5.5 2v7M2 6l3.5 3.5L9 6"/></svg>
+        {{ totalBaixo > 0 ? 'requer atenção' : 'adequado' }}
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Esgotados</div>
+      <div class="kpi-value">{{ totalEsgotado }}</div>
+      <div class="kpi-delta" [ngClass]="totalEsgotado > 0 ? 'kpi-down' : 'kpi-neutral'">
+        {{ totalEsgotado > 0 ? 'sem estoque' : 'ok' }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Produtos em Estoque</div>
+        <div class="panel-sub">{{ filtered.length }} de {{ totalProdutos }} produto(s)</div>
+      </div>
+      <div class="search-box" style="margin-left:auto">
+        <svg viewBox="0 0 12 12"><path d="M5 9A4 4 0 105 1a4 4 0 000 8zM11 11l-2-2"/></svg>
+        <input type="text" placeholder="Buscar por código ou descrição..."
+          [value]="searchTerm" (input)="onSearch($any($event.target).value)" />
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Descrição</th>
+          <th>Saldo</th>
+          <th>Status</th>
+          <th style="text-align:right;padding-right:18px">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="isLoading" class="loading-row">
+          <td colspan="5">
+            <span class="spinner-ring-dark" style="margin-right:8px;vertical-align:middle"></span>
+            Carregando produtos...
+          </td>
+        </tr>
+
+        <tr *ngFor="let p of filtered">
+          <td><span class="col-mono">{{ p.codigo }}</span></td>
+          <td>{{ p.descricao }}</td>
+          <td>
+            <div class="stock-bar" [ngClass]="stockClass(p)">
+              <div class="stock-track"><div class="stock-fill" [style.width]="stockWidth(p)"></div></div>
+              <span class="stock-qty" [ngClass]="{ empty: p.saldo === 0 }">{{ p.saldo | number:'1.0-2' }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="stockBadge(p).cls">{{ stockBadge(p).label }}</span>
+          </td>
+          <td style="text-align:right;padding-right:14px">
+            <div style="display:inline-flex;gap:6px">
+              <!-- Incrementar saldo -->
+              <button class="btn btn-ghost btn-sm" (click)="abrirIncrementar(p)" title="Incrementar saldo">
+                <svg viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"/></svg>
+                Saldo
+              </button>
+              <!-- Editar -->
+              <button class="btn btn-ghost btn-sm" (click)="abrirEditar(p)" title="Editar produto">
+                <svg viewBox="0 0 12 12"><path d="M8.5 1.5l2 2L4 10H2v-2L8.5 1.5z"/></svg>
+                Editar
+              </button>
+              <!-- Excluir -->
+              <button class="btn btn-danger btn-sm" (click)="deletar(p)" title="Excluir produto">
+                <svg viewBox="0 0 12 12"><path d="M2 3h8M4 3V2a1 1 0 011-1h2a1 1 0 011 1v1M5 6v4M7 6v4M3 3l.5 7a1 1 0 001 1h3a1 1 0 001-1L9 3"/></svg>
+                Excluir
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="!isLoading && filtered.length === 0">
+          <td colspan="5">
+            <div class="empty-state">
+              <svg viewBox="0 0 32 32"><path d="M16 2L2 9v14l14 7 14-7V9z"/><path d="M2 9l14 7M16 30V16M30 9l-14 7"/></svg>
+              <div class="empty-state-title">Nenhum produto encontrado</div>
+              <div>{{ searchTerm ? 'Ajuste a busca.' : 'Clique em Novo Produto para começar.' }}</div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,107 @@
+<!-- Topbar -->
+<div class="topbar">
+  <span class="topbar-breadcrumb">Notas Fiscais</span>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-title">Emitir Nova Nota Fiscal</span>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" (click)="voltar()">Cancelar</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- Alert -->
+  <div *ngIf="errorMessage" class="alert-inline error">
+    <svg viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 4v3M6.5 9v.5"/></svg>
+    {{ errorMessage }}
+  </div>
+
+  <!-- Items panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Itens da Nota Fiscal</div>
+        <div class="panel-sub">Adicione os produtos que compõem esta nota</div>
+      </div>
+      <button class="btn btn-ghost" style="margin-left: auto;" (click)="adicionarItem()">
+        <svg viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"/></svg>
+        Adicionar Item
+      </button>
+    </div>
+
+    <div style="padding: 16px 18px;">
+
+      <!-- Column headers -->
+      <div style="display: grid; grid-template-columns: 140px 1fr 100px 110px 90px 32px; gap: 10px; padding: 0 14px; margin-bottom: 8px;">
+        <span class="field-label">Código</span>
+        <span class="field-label">Descrição</span>
+        <span class="field-label">Quantidade</span>
+        <span class="field-label">Vlr. Unitário</span>
+        <span class="field-label" style="text-align: right;">Subtotal</span>
+        <span></span>
+      </div>
+
+      <div class="item-rows" [formGroup]="form">
+        <div formArrayName="itens">
+          <div *ngFor="let item of itens.controls; let i = index"
+               [formGroupName]="i" class="item-row">
+
+            <div>
+              <select class="field-select" formControlName="codigoProduto"
+                (change)="onProdutoSelecionado(i)"
+                [ngClass]="{ 'has-error': item.get('codigoProduto')?.invalid && item.get('codigoProduto')?.touched }">
+                <option value="">Selecionar...</option>
+                <option *ngFor="let p of produtos" [value]="p.codigo">
+                  {{ p.codigo }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <input class="field-input" formControlName="descricaoProduto"
+                type="text" placeholder="Descrição" [readonly]="true" />
+            </div>
+
+            <div>
+              <input class="field-input" formControlName="quantidade"
+                type="number" step="0.01" min="0.01"
+                [ngClass]="{ 'has-error': item.get('quantidade')?.invalid && item.get('quantidade')?.touched }" />
+            </div>
+
+            <div>
+              <input class="field-input" formControlName="valorUnitario"
+                type="number" step="0.01" min="0.01"
+                [ngClass]="{ 'has-error': item.get('valorUnitario')?.invalid && item.get('valorUnitario')?.touched }" />
+            </div>
+
+            <div class="subtotal-display">
+              {{ subtotal(i) | currency:'BRL':'symbol':'1.2-2' }}
+            </div>
+
+            <button type="button" class="item-remove" (click)="removerItem(i)" [disabled]="itens.length === 1">
+              <svg viewBox="0 0 11 11"><path d="M2 2l7 7M9 2L2 9"/></svg>
+            </button>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Total -->
+      <div class="divider" style="margin-top: 16px;"></div>
+      <div class="total-row">
+        <span class="total-label">Total da Nota</span>
+        <span class="total-value">{{ total | currency:'BRL':'symbol':'1.2-2' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <div style="display: flex; justify-content: flex-end; gap: 10px;">
+    <button class="btn btn-ghost" (click)="voltar()">Cancelar</button>
+    <button class="btn btn-primary" [disabled]="form.invalid || isSaving" (click)="onSubmit()">
+      <span *ngIf="isSaving" class="spinner-ring"></span>
+      {{ isSaving ? 'Emitindo nota...' : 'Emitir Nota Fiscal' }}
+    </button>
+  </div>
+
+</div>

@@ -1,0 +1,216 @@
+<!-- Confirm Dialog -->
+<app-confirm-dialog
+  *ngIf="confirmDialog.visible"
+  [title]="confirmDialog.title"
+  [message]="confirmDialog.message"
+  [detail]="confirmDialog.detail"
+  [type]="confirmDialog.type"
+  [confirmLabel]="confirmDialog.confirmLabel"
+  (confirmed)="onConfirmDialogConfirm()"
+  (cancelled)="onConfirmDialogCancel()">
+</app-confirm-dialog>
+
+<!-- Toast -->
+<div class="toast-container">
+  <div *ngIf="toast" class="toast" [ngClass]="toast.type" (click)="dismissToast()">
+    <div class="toast-dot"></div>
+    <div>
+      <div class="toast-title">{{ toast.title }}</div>
+      <div class="toast-msg">{{ toast.message }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Topbar -->
+<div class="topbar">
+  <span class="topbar-breadcrumb">Operações</span>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-title">Notas Fiscais</span>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" (click)="carregar()">
+      <svg viewBox="0 0 12 12"><path d="M10.5 6A4.5 4.5 0 112.3 3.3M1.5 1.5v3h3"/></svg>
+      Atualizar
+    </button>
+    <a routerLink="/invoices/new" class="btn btn-primary">
+      <svg viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"/></svg>
+      Nova Nota
+    </a>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Total de Notas</div>
+      <div class="kpi-value">{{ totalNotas }}</div>
+      <div class="kpi-delta kpi-neutral">emitidas</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Aguardando Impressão</div>
+      <div class="kpi-value">{{ totalAbertas }}</div>
+      <div class="kpi-delta kpi-neutral">notas abertas</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Em Processamento</div>
+      <div class="kpi-value">{{ totalProcessando }}</div>
+      <div class="kpi-delta kpi-neutral">via fila</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Valor Total Faturado</div>
+      <div class="kpi-value" style="font-size:18px">{{ valorTotal | currency:'BRL':'symbol':'1.2-2' }}</div>
+      <div class="kpi-delta kpi-neutral">notas fechadas</div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Registro de Notas Fiscais</div>
+        <div class="panel-sub">{{ filtered.length }} nota(s) — atualização em tempo real via SignalR</div>
+      </div>
+
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        <button class="btn btn-sm" [ngClass]="filterStatus==='all'?'btn-primary':'btn-ghost'" (click)="onFilterStatus('all')">Todas</button>
+        <button class="btn btn-sm" [ngClass]="filterStatus==='Aberta'?'btn-primary':'btn-ghost'" (click)="onFilterStatus('Aberta')">Abertas</button>
+        <button class="btn btn-sm" [ngClass]="filterStatus==='Processando'?'btn-primary':'btn-ghost'" (click)="onFilterStatus('Processando')">Processando</button>
+        <button class="btn btn-sm" [ngClass]="filterStatus==='Fechada'?'btn-primary':'btn-ghost'" (click)="onFilterStatus('Fechada')">Fechadas</button>
+        <button class="btn btn-sm" [ngClass]="filterStatus==='Cancelada'?'btn-primary':'btn-ghost'" (click)="onFilterStatus('Cancelada')">Canceladas</button>
+      </div>
+
+      <div class="search-box">
+        <svg viewBox="0 0 12 12"><path d="M5 9A4 4 0 105 1a4 4 0 000 8zM11 11l-2-2"/></svg>
+        <input type="text" placeholder="Buscar por número..."
+          [value]="searchTerm" (input)="onSearch($any($event.target).value)" />
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Numero</th>
+          <th>Data de Emissão</th>
+          <th>Itens</th>
+          <th class="col-right">Valor Total</th>
+          <th>Status</th>
+          <th style="text-align:right;padding-right:18px">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr *ngIf="isLoading" class="loading-row">
+          <td colspan="6">
+            <span class="spinner-ring-dark" style="margin-right:8px;vertical-align:middle"></span>
+            Carregando notas fiscais...
+          </td>
+        </tr>
+
+        <tr *ngFor="let nota of filtered"
+            [style.opacity]="nota.status === 'Cancelada' ? '0.5' : '1'">
+
+          <td><span class="col-mono">{{ formatNumero(nota.numero) }}</span></td>
+          <td class="col-muted">{{ nota.dataEmissao | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td class="col-muted">{{ nota.itens.length }} {{ nota.itens.length === 1 ? 'item' : 'itens' }}</td>
+          <td class="col-right" style="font-family:var(--mono);font-size:12px">
+            {{ nota.valorTotal | currency:'BRL':'symbol':'1.2-2' }}
+          </td>
+
+          <td>
+            <!-- Badge de status com animação para Processando -->
+            <span class="badge"
+              [ngClass]="{
+                'badge-open':        nota.status === 'Aberta',
+                'badge-processando': nota.status === 'Processando',
+                'badge-closed':      nota.status === 'Fechada',
+                'badge-alert':       nota.status === 'Cancelada'
+              }">
+              <span *ngIf="nota.status === 'Processando'" class="badge-pulse"></span>
+              {{ nota.status }}
+            </span>
+          </td>
+
+          <td style="text-align:right;padding-right:14px">
+            <div style="display:inline-flex;gap:6px;align-items:center">
+
+              <!--
+                Botão "Imprimir":
+                - Aberta       → azul, clicável
+                - Spinner 3s   → spinner + "Aguarde..."
+                - Processando  → cinza + animação, desabilitado (fila ativa)
+                - Fechada      → cinza + check, desabilitado
+                - Cancelada    → oculto
+              -->
+              <button *ngIf="nota.status !== 'Cancelada'"
+                class="btn btn-sm"
+                [ngClass]="{
+                  'btn-primary': nota.status === 'Aberta' && !isPrinting(nota.id),
+                  'btn-ghost':   nota.status !== 'Aberta' || isPrinting(nota.id)
+                }"
+                [disabled]="nota.status !== 'Aberta' || isPrinting(nota.id)"
+                (click)="onImprimir(nota)"
+                style="min-width:124px;justify-content:center">
+
+                <!-- Estado: clicado, aguardando 3s + requisição -->
+                <ng-container *ngIf="isPrinting(nota.id)">
+                  <span class="spinner-ring" style="width:11px;height:11px;border-width:2px"></span>
+                  Aguarde...
+                </ng-container>
+
+                <!-- Estado: Aberta, disponível -->
+                <ng-container *ngIf="!isPrinting(nota.id) && nota.status === 'Aberta'">
+                  <svg viewBox="0 0 12 12" style="width:11px;height:11px">
+                    <path d="M2 4h8v5a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM4 4V2a1 1 0 011-1h2a1 1 0 011 1v2M1 4h10"/>
+                  </svg>
+                  Imprimir
+                </ng-container>
+
+                <!-- Estado: Processando (fila ativa) -->
+                <ng-container *ngIf="!isPrinting(nota.id) && nota.status === 'Processando'">
+                  <span class="spinner-ring-dark" style="width:10px;height:10px;border-width:1.5px"></span>
+                  Na fila...
+                </ng-container>
+
+                <!-- Estado: Fechada -->
+                <ng-container *ngIf="!isPrinting(nota.id) && nota.status === 'Fechada'">
+                  <svg viewBox="0 0 12 12" style="width:11px;height:11px">
+                    <path d="M2 6l3 3 5-5"/>
+                  </svg>
+                  Concluída
+                </ng-container>
+
+              </button>
+
+              <!-- Botão Cancelar — só para notas Abertas -->
+              <button *ngIf="nota.status === 'Aberta'"
+                class="btn btn-danger btn-sm"
+                [disabled]="isCanceling(nota.id) || isPrinting(nota.id)"
+                (click)="onCancelar(nota)"
+                style="min-width:90px;justify-content:center">
+                <ng-container *ngIf="isCanceling(nota.id)">
+                  <span class="spinner-ring" style="width:11px;height:11px;border-width:2px;border-top-color:var(--danger)"></span>
+                  Cancelando...
+                </ng-container>
+                <ng-container *ngIf="!isCanceling(nota.id)">Cancelar</ng-container>
+              </button>
+
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="!isLoading && filtered.length === 0">
+          <td colspan="6">
+            <div class="empty-state">
+              <svg viewBox="0 0 32 32"><rect x="4" y="3" width="24" height="26" rx="2"/><path d="M10 10h12M10 15h12M10 20h7"/></svg>
+              <div class="empty-state-title">Nenhuma nota fiscal encontrada</div>
+              <div>{{ searchTerm || filterStatus !== 'all' ? 'Ajuste os filtros.' : 'Crie a primeira nota clicando em Nova Nota.' }}</div>
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+</div>

@@ -52,7 +52,7 @@ jobs:
   validate-migrations:
     name: Validate EF Core Migrations
     runs-on: ubuntu-latest
-    needs: build-and-test   # Só valida se o build passar
+    needs: build-and-test
 
     steps:
       - name: Checkout
@@ -72,13 +72,21 @@ jobs:
       - name: Restore — Faturamento.API
         run: dotnet restore Faturamento.API/Faturamento.API.csproj
 
+      # ADICIONADO: Build em modo Release nesta máquina virtual antes do EF
+      - name: Build — Estoque.API (Release)
+        run: dotnet build Estoque.API/Estoque.API.csproj --no-restore -c Release
+
+      - name: Build — Faturamento.API (Release)
+        run: dotnet build Faturamento.API/Faturamento.API.csproj --no-restore -c Release
+
       # Gera o script SQL idempotente da migration (--idempotent)
-      # Valida que o modelo e a migration estão em sincronia
+      # ADICIONADO: A flag --configuration Release
       - name: Validate Migration — Estoque
         run: |
           dotnet ef migrations script \
             --idempotent \
             --no-build \
+            --configuration Release \
             --project Estoque.API/Estoque.API.csproj \
             --output /tmp/migration-estoque.sql
           echo "✔ Migration Estoque gerada com sucesso"
@@ -90,13 +98,13 @@ jobs:
           dotnet ef migrations script \
             --idempotent \
             --no-build \
+            --configuration Release \
             --project Faturamento.API/Faturamento.API.csproj \
             --output /tmp/migration-faturamento.sql
           echo "✔ Migration Faturamento gerada com sucesso"
           echo "Primeiras linhas do script:"
           head -20 /tmp/migration-faturamento.sql
 
-      # Upload dos scripts como artefatos para auditoria
       - name: Upload Migration Scripts
         uses: actions/upload-artifact@v4
         with:
@@ -104,7 +112,7 @@ jobs:
           path: /tmp/migration-*.sql
           retention-days: 30
 
-  # ── Job 3: Build Docker (apenas na main) ──────────────────
+  # ── Job 3: Build Docker (apenas na main e develop) ────────
   docker-build:
     name: Docker Build Check
     runs-on: ubuntu-latest

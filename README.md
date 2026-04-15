@@ -6,7 +6,7 @@ Sistema distribuído com dois microsserviços .NET 8, frontend Angular 17, mensa
 
 ## Arquitetura do Sistema
 
-```
+```mermaid
 graph LR
     classDef frontend fill:#635BFF,stroke:#fff,stroke-width:2px,color:#fff;
     classDef backend  fill:#0A2540,stroke:#fff,stroke-width:2px,color:#fff;
